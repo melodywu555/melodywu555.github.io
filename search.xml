@@ -6,9 +6,6 @@
     <content><![CDATA[<p>  最近终于所有的乱七八糟的事情都要结尾啦，开始真正静下心来刷题，刷了几个就开始思考刷题的意义～<br>  无容置疑，写程序数据结构+算法是一定要掌握哒，程序=算法+数据结构<br>  但是我觉得，不能单纯的为了写题而写题，写题的过程中，还要注意自己的代码风格，写题不应该是面向面试，而是要抱着锻炼思维能力的想法去刷题，从今天起，这篇文章将会记录我从各地搜来的如何培养良好代码风格的文章，还有刷题过程中的七七八八的零碎想法～<br>  #version1 Google Java 代码规范</p>
 <p>  先贴一个链接吧～后续再来整理<br>  <a href="https://www.jianshu.com/p/2c58ec4f12dd" target="_blank" rel="noopener">谷歌代码规范</a></p>
 ]]></content>
-      <categories>
-        <category>学习</category>
-      </categories>
       <tags>
         <tag>一些想法，代码风格</tag>
       </tags>
