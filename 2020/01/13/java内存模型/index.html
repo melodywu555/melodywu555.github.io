@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://melodywu555.github.io').hostname,
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="Java内存模型主内存与工作内存 Java内存模型的主要目标是定义程序中各个变量的访问规则,即在虚拟机中将变量存储到内存和从内存中取出变量这样的底层细节.此处的变量(Variables)与Java编程中所说的变量有所区别,它包括了实例字段、静态字段、和构成数组对象的元素,但不包括局部变量与方法参数,因为后两者是线程私有的,不会被共享,自然也不会存在竞争问题. Java内存模型规定了所有的变量都存储">
+<meta name="keywords" content="java">
+<meta property="og:type" content="article">
+<meta property="og:title" content="java内存模型">
+<meta property="og:url" content="https:&#x2F;&#x2F;melodywu555.github.io&#x2F;2020&#x2F;01&#x2F;13&#x2F;java%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B&#x2F;index.html">
+<meta property="og:site_name" content="melodyWu&#39;s Blog">
+<meta property="og:description" content="Java内存模型主内存与工作内存 Java内存模型的主要目标是定义程序中各个变量的访问规则,即在虚拟机中将变量存储到内存和从内存中取出变量这样的底层细节.此处的变量(Variables)与Java编程中所说的变量有所区别,它包括了实例字段、静态字段、和构成数组对象的元素,但不包括局部变量与方法参数,因为后两者是线程私有的,不会被共享,自然也不会存在竞争问题. Java内存模型规定了所有的变量都存储">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2020-01-13T01:25:30.795Z">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://melodywu555.github.io/2020/01/13/java%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>java内存模型 | melodyWu's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">melodyWu's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://melodywu555.github.io/2020/01/13/java%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/me.jpeg">
+      <meta itemprop="name" content="wuxiaoman">
+      <meta itemprop="description" content="任何人该做的，不该是难受和后悔，是总结反思接受">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="melodyWu's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          java内存模型
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-01-13 09:23:59 / 修改时间：09:25:30" itemprop="dateCreated datePublished" datetime="2020-01-13T09:23:59+08:00">2020-01-13</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="Java内存模型"><a href="#Java内存模型" class="headerlink" title="Java内存模型"></a>Java内存模型</h2><h3 id="主内存与工作内存"><a href="#主内存与工作内存" class="headerlink" title="主内存与工作内存"></a>主内存与工作内存</h3><ul>
+<li>Java内存模型的主要目标是定义程序中各个变量的访问规则,即在虚拟机中将变量存储到内存和从内存中取出变量这样的底层细节.此处的变量(Variables)与Java编程中所说的变量有所区别,它包括了<code>实例字段</code>、<code>静态字段</code>、和<code>构成数组对象的元素</code>,但不包括<code>局部变量</code>与<code>方法参数</code>,因为后两者是线程私有的,不会被共享,自然也不会存在竞争问题.</li>
+<li>Java内存模型规定了所有的变量都存储在<code>主内存(Main Memory)</code>中,每条线程还有自己的<code>工作内存(Working Memory)</code>,线程中的工作内存中保存了该线程使用到的变量的主内存副本拷贝,线程对变量的所有操作(读取、赋值等)都必须在工作内存中进行.不同的线程之间也无法直接访问对方工作内存中的变量,线程间变量值的传递均需要通过主内存来完成.</li>
+</ul>
+<h3 id="内存间相互操作"><a href="#内存间相互操作" class="headerlink" title="内存间相互操作"></a>内存间相互操作</h3><ul>
+<li>关于主内存与工作内存之间具体的交互协议,即一个变量如何从内存拷贝到工作内存、如何从工作内存同步回主内存之类的实现细节,Java内存模型中定义了以下<code>8</code>种操作来完成,虚拟机实现时必须保证下面提及的每一种操作都是原子的、不可再分的(对于<code>double</code>和<code>long</code>类型的变量来说,<code>load</code>、<code>store</code>、<code>read</code>和<code>write</code>操作在某些平台上有例外,这个问题后面再说).</li>
+<li>基于理解难度和严谨性考虑,最新的JSR-133文档中,已经放弃采用这8种操作去定义Java内存模型的访问协议了(仅是描述方式改变了,Java内存模型并没有改变)</li>
+</ul>
+<h4 id="lock-锁定"><a href="#lock-锁定" class="headerlink" title="lock(锁定)"></a>lock(锁定)</h4><p>作用于主内存的变量,它把一个变量标识为一条线程独占的状态</p>
+<h4 id="unlock-解锁"><a href="#unlock-解锁" class="headerlink" title="unlock(解锁)"></a>unlock(解锁)</h4><p>作用于主内存的变量,它把一个处于锁定状态的变量释放出来,释放后的变量才可以被其他线程锁定.</p>
+<h4 id="read-读取"><a href="#read-读取" class="headerlink" title="read(读取)"></a>read(读取)</h4><p>作用于主内存的变量,它把一个变量的值从主内存传输到工作内存,以便随后的<code>load</code>动作使用</p>
+<h4 id="load-载入"><a href="#load-载入" class="headerlink" title="load(载入)"></a>load(载入)</h4><p>作用于工作内存的变量,它把read操作从主内存中得到的变量值放入工作内存的变量副本中.</p>
+<h4 id="use-使用"><a href="#use-使用" class="headerlink" title="use(使用)"></a>use(使用)</h4><p> 作用于工作内存的变量,它把工作内存中一个变量的值传递给执行引擎,每当虚拟机遇到一个需要使用到变量的值的字节码指令时将会执行这个操作.</p>
+<h4 id="assign-赋值"><a href="#assign-赋值" class="headerlink" title="assign(赋值)"></a>assign(赋值)</h4><p>作用于工作内存的变量,它把一个从执行引擎接收到的值赋给工作内存的变量,每当虚拟机遇到一个给变量赋值的字节码指令时执行这个操作.</p>
+<h4 id="store-存储"><a href="#store-存储" class="headerlink" title="store(存储)"></a>store(存储)</h4><p>作用于工作内存的变量,它把工作内存中一个变量的值传送到主内存中,以便随后的write操作使用</p>
+<h4 id="write-写入"><a href="#write-写入" class="headerlink" title="write(写入)"></a>write(写入)</h4><p>作用于主内存的变量,它把store操作从工作内存中得到的变量的值放入内存的变量中</p>
+<h3 id="对于volatile型变量的特殊规则"><a href="#对于volatile型变量的特殊规则" class="headerlink" title="对于volatile型变量的特殊规则"></a>对于volatile型变量的特殊规则</h3><p>volatie变量读操作的性能消耗与普通变量几乎没有什么差别,但是写操作则可能会慢一些,因为它需要在本地代码中插入许多内存屏障指令来保证处理器不发生乱序执行.</p>
+<h4 id="保证此变量对所有线程的可见性"><a href="#保证此变量对所有线程的可见性" class="headerlink" title="保证此变量对所有线程的可见性"></a>保证此变量对所有线程的可见性</h4><h4 id="禁止指令重排序优化"><a href="#禁止指令重排序优化" class="headerlink" title="禁止指令重排序优化"></a>禁止指令重排序优化</h4><p> 内存屏障(Memory Barrier或Memory Fence)</p>
+<h3 id="原子性、可见性和有序性"><a href="#原子性、可见性和有序性" class="headerlink" title="原子性、可见性和有序性"></a>原子性、可见性和有序性</h3><p>Java内存模型是围绕着在并发过程中如何处理原子性、可见性和有序性这3个特征来建立的.</p>
+<h4 id="原子性"><a href="#原子性" class="headerlink" title="原子性"></a>原子性</h4><ul>
+<li>Java内存模型直接保证原子性操作包括<code>read、load、assign、use、store和write</code>,我们大致可以认为基本数据类型的访问是具备原子性的(例外就是<code>long</code>和<code>double</code>的非原子协定,但这个知道就行了,虚拟机的实现基本都是以原子操作它们的).</li>
+<li>如果应用场景需要一个更大范围的原子性保证,Java内存模型还提供了<code>lock</code>和<code>unlock</code>操作来满足这种需求,尽管虚拟机未把<code>lock</code>和<code>unlock</code>操作直接开放给用户使用,但是却提供了更高层次的字节码指令<code>monitorenter</code>和<code>monitorexit</code>来隐式地使用这两个操作,这两个字节码指令反映到Java代码中就是—-<code>synchronized</code>关键字,因此<code>synchronized块</code>之间的操作也具备原子性.</li>
+</ul>
+<h4 id="可见性"><a href="#可见性" class="headerlink" title="可见性"></a>可见性</h4><ul>
+<li>除了<code>volatile</code>之外,Java还有两个关键字能实现可见性,即<code>synchronized</code>和<code>final</code>.</li>
+<li>同步块的可见性是由”对一个变量执行unclock只前,必须先把此变量同步回主内存中(执行store、write操作)”这条规则获得的.</li>
+</ul>
+<h4 id="有序的"><a href="#有序的" class="headerlink" title="有序的"></a>有序的</h4><p>Java程序中天然的有序性可以总结为一句话:</p>
+<ul>
+<li>如果在本线程内观察,所有的操作都是有序的;</li>
+<li>如果在另一个线程中观察,所有的操作都是无序的.</li>
+</ul>
+<p>前半句是指<code>线程内表现为串行的语义(Within-Thread As-If-Serial Semantics)</code>,后半句是指<code>指令重排序</code>现象和<code>工作内存与主内存同步延迟</code>现象</p>
+<h3 id="先行发生原则-happens-before"><a href="#先行发生原则-happens-before" class="headerlink" title="先行发生原则(happens-before)"></a>先行发生原则(happens-before)</h3><h4 id="Java内存模型中天然存在的先行发生关系"><a href="#Java内存模型中天然存在的先行发生关系" class="headerlink" title="Java内存模型中天然存在的先行发生关系"></a>Java内存模型中天然存在的先行发生关系</h4><h2 id="Java与线程"><a href="#Java与线程" class="headerlink" title="Java与线程"></a>Java与线程</h2><h3 id="线程的实现"><a href="#线程的实现" class="headerlink" title="线程的实现"></a>线程的实现</h3><ul>
+<li>操作系统支持怎样的线程模型，在很大度上决定了Java虚拟机的线程是怎样映射的，这点在不同的平台上没有办法达成一致.</li>
+<li>对于Sun JDK来．说，它的Windows版与Linux版都是使用一对一的线程模型实的，一条Java线程就映射一条轻量级进程之中，．因为Windows和Linux系统提供的线程模型就是一对一的.</li>
+</ul>
+<h4 id="使用内核线程实现"><a href="#使用内核线程实现" class="headerlink" title="使用内核线程实现"></a>使用内核线程实现</h4><ul>
+<li>内核线程(Kernel-Level Thread,KLT)就是直接由操作系统内核支持的线程,内核通过操纵调度器(Scheduler)对线程进行调度.每个内核线程都可以视为内核的一个分身,支持多线程的内核就叫做多线程内核.</li>
+<li>程序一般不会去是用内核线程,而是去使用内核线程的一种高级接口——<code>轻量级进程</code>(Light Weight Process,LWP),<code>轻量级进程</code>就是我们通常所讲的<code>线程</code>,由于每个轻量级进程都由一个内核线程支持,因此只有先支持<code>内核线程</code>,才能有<code>轻量级进程</code></li>
+<li>由于内核线程的支持，每个轻量级进程都成为一个独立的调度单元，即使有一个轻量级进程在系统调用中阻塞了，也不会影响整个进程继续工作，但是轻量级进程具有它的局限性：<ul>
+<li>首先,由于是基于内核线程实现的，所以各种线程操作，如创建、析构及同步，都需要进行系统调用。而系统调用的代价相对较高，需要在用户态（UserMode）和内核态(Kernel Mode）中来回切换。</li>
+<li>其次，每个轻量级进程都需要有一个内核线程的支持，因此轻量级进程要消耗一定的内核资源（如内核线程的栈空间），因此一个系统支持轻量级进程的数量是有限的。</li>
+</ul>
+</li>
+</ul>
+<h5 id="Windows平台"><a href="#Windows平台" class="headerlink" title="Windows平台"></a>Windows平台</h5><h5 id="Linux平台"><a href="#Linux平台" class="headerlink" title="Linux平台"></a>Linux平台</h5><h4 id="使用用户线程实现"><a href="#使用用户线程实现" class="headerlink" title="使用用户线程实现"></a>使用用户线程实现</h4><ul>
+<li>从广义上讲,一个线程只要不是内核线程,就可认为是用户线程(User Thread,UT),因此,从这个定义上来讲,轻量级进程也属于用户线程,但轻量级进程的实现始终是建立在内核之上,许多操作都要进行系统调用,效率会受到限制.</li>
+<li>而狭义上的用户线程指的是完全建立在用户空间的线程库上,系统内核不能感知线程存在的实现.</li>
+<li>使用用户线程的优势在于不需要系统内核支援,劣势也在这,所有的线程操作都需要用户程序自己处理.太复杂,所以大多数语言都已经<code>放弃使用</code>这种方式.</li>
+</ul>
+<h4 id="使用用户线程加轻量级进程混合实现"><a href="#使用用户线程加轻量级进程混合实现" class="headerlink" title="使用用户线程加轻量级进程混合实现"></a>使用用户线程加轻量级进程混合实现</h4><ul>
+<li>线程除了依赖内核线程实现和完全由用户程序自己实现之外，还有一种将内核线程与用户线程一起使用的实现方式。在这种混合实现下，既存在<code>用户线程</code>，也存在<code>轻量级进程</code>。</li>
+<li>用户线程还是完全建立在用户空间中，因此用户线程的创建、切换、析构等操作依然廉价，并且可以支持大规模的用户线程并发。</li>
+<li>而操作系统提供支持的轻量级进程则作为用户线程和内核线程之间的桥梁，这样可以使用内核提供的线程调度功能及处理器映射，并且用户线程的系统调用要通过轻量级线程来完成，大大降低了整个进程被完全阻塞的风险。在这种混合模式中，用户线程与轻量级进程的数量比是不定的，即为N：M的关系</li>
+</ul>
+<h5 id="Solaris平台"><a href="#Solaris平台" class="headerlink" title="Solaris平台"></a>Solaris平台</h5><h3 id="Java线程调度"><a href="#Java线程调度" class="headerlink" title="Java线程调度"></a>Java线程调度</h3><h4 id="协同式线程调度-Cooperative-Threads-Scheduling"><a href="#协同式线程调度-Cooperative-Threads-Scheduling" class="headerlink" title="协同式线程调度(Cooperative Threads-Scheduling)"></a>协同式线程调度(Cooperative Threads-Scheduling)</h4><p>如果使用协同式调度的多线程系统，线程的执行时间由线程本身来控制，线程把自己的工作执行完了之后，要主动通知系统切换到另外一个线程上。</p>
+<ul>
+<li>协同式多线程的最大好处是实现简单，而且由于线程要把自己的事情干完后才会进行线程切换，切换操作对线程自己是可知的，所以没有什么线程同步的问题。</li>
+<li>它的坏处也很明显：线程执行时间不可控制，甚至如果一个线程编写有问题，一直不告知系统进行线程切换，那么程序就会一直阻塞在那里。</li>
+</ul>
+<h4 id="抢占式线程调度-Preemptice-Threads-Scheduling"><a href="#抢占式线程调度-Preemptice-Threads-Scheduling" class="headerlink" title="抢占式线程调度(Preemptice Threads-Scheduling)"></a>抢占式线程调度(Preemptice Threads-Scheduling)</h4><h3 id="状态转换"><a href="#状态转换" class="headerlink" title="状态转换"></a>状态转换</h3><h4 id="新建-New"><a href="#新建-New" class="headerlink" title="新建(New)"></a>新建(New)</h4><p>创建后尚未启动的线程处于这种状态。</p>
+<h4 id="运行-Runable"><a href="#运行-Runable" class="headerlink" title="运行(Runable)"></a>运行(Runable)</h4><p>Runable包括了操作系统线程状态中的<code>Running</code>和<code>Ready</code>,也就是处于此状态的线程有可能正在执行，也有可能正在等待着CPU为它分配执行时间．</p>
+<h4 id="无限期等待-Waiting"><a href="#无限期等待-Waiting" class="headerlink" title="无限期等待(Waiting)"></a>无限期等待(Waiting)</h4><p>处于这种状态的线程不会被分配执行时间，它们要等待被其他线程显式地唤醒.以下方法会让线程陷人无限期的等待状态：</p>
+<ul>
+<li>没有设置<code>Timeout</code>参数的<code>Object.wait()</code>方法。</li>
+<li>没有设置<code>Timeout</code>参数的<code>Thread.join()</code>方法·</li>
+<li><code>LockSupport.park()</code>方法。</li>
+<li>对于join方法,稍稍给个栗子<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">public static void main(String [] args) throws InterruptedException &#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line">        ThreadJoinTest t1 &#x3D; new ThreadJoinTest(&quot;小明&quot;);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line">        ThreadJoinTest t2 &#x3D; new ThreadJoinTest(&quot;小东&quot;);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line">        t1.start();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">5</span></pre></td><td class="code"><pre><span class="line">        &#x2F;**join的意思是使得放弃当前线程的执行，并返回对应的线程，例如下面代码的意思就是：</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">6</span></pre></td><td class="code"><pre><span class="line">         程序在main线程中调用t1线程的join方法，则main线程放弃cpu控制权，并返回t1线程继续执行直到线程t1执行完毕</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">7</span></pre></td><td class="code"><pre><span class="line">         所以结果是t1线程执行完后，才到主线程执行，相当于在main线程中同步t1线程，t1执行完了，main线程才有执行的机会</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">8</span></pre></td><td class="code"><pre><span class="line">         *&#x2F;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">9</span></pre></td><td class="code"><pre><span class="line">        t1.join();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">10</span></pre></td><td class="code"><pre><span class="line">        t2.start();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">11</span></pre></td><td class="code"><pre><span class="line">    &#125;</span></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h4 id="限期等待-Timed-Waiting"><a href="#限期等待-Timed-Waiting" class="headerlink" title="限期等待(Timed Waiting)"></a>限期等待(Timed Waiting)</h4><p>处于这种状态的线程也不会被分配CPU执行时间，不过无须等待被其他线程显式地唤醒，在一定时间之后它们会由系统自动唤醒。以下方法会让线程进人限期等待状态：</p>
+<ul>
+<li>`Thread.sleep()方法。</li>
+<li>设置了<code>Timeout</code>参数的<code>Object.wait()</code>方法。<br>设置了<code>Timeout</code>参数的<code>Thread.join()</code>方法。<br><code>LockSupport.parkNanos()</code>方法。<br><code>LockSupportparkUntil()</code>方法。</li>
+</ul>
+<h4 id="阻塞-Blocked"><a href="#阻塞-Blocked" class="headerlink" title="阻塞(Blocked)"></a>阻塞(Blocked)</h4><p>线程被阻塞了，“阻塞状态”与“等待状态”的区别是：</p>
+<ul>
+<li><code>阻塞状态</code>在等待着获取到一个排他锁</li>
+<li><code>等待状态</code>则是在等待一段时间，或者唤醒动作的发生。在程序等待进人同步区域的时候，线程将进人这种状态。</li>
+</ul>
+<h4 id="结束-Terminated"><a href="#结束-Terminated" class="headerlink" title="结束(Terminated)"></a>结束(Terminated)</h4>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/java/" rel="tag"># java</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/12/24/aaa/" rel="prev" title="转载 程序员的思维修炼">
+      <i class="fa fa-chevron-left"></i> 转载 程序员的思维修炼
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/01/26/%E7%A8%8B%E5%BA%8F%E5%91%98%E7%9A%84%E8%87%AA%E6%88%91%E4%BF%AE%E5%85%BB/" rel="next" title="程序员的自我修养">
+      程序员的自我修养 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Java内存模型"><span class="nav-number">1.</span> <span class="nav-text">Java内存模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#主内存与工作内存"><span class="nav-number">1.1.</span> <span class="nav-text">主内存与工作内存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内存间相互操作"><span class="nav-number">1.2.</span> <span class="nav-text">内存间相互操作</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#lock-锁定"><span class="nav-number">1.2.1.</span> <span class="nav-text">lock(锁定)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#unlock-解锁"><span class="nav-number">1.2.2.</span> <span class="nav-text">unlock(解锁)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#read-读取"><span class="nav-number">1.2.3.</span> <span class="nav-text">read(读取)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#load-载入"><span class="nav-number">1.2.4.</span> <span class="nav-text">load(载入)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#use-使用"><span class="nav-number">1.2.5.</span> <span class="nav-text">use(使用)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#assign-赋值"><span class="nav-number">1.2.6.</span> <span class="nav-text">assign(赋值)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#store-存储"><span class="nav-number">1.2.7.</span> <span class="nav-text">store(存储)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#write-写入"><span class="nav-number">1.2.8.</span> <span class="nav-text">write(写入)</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#对于volatile型变量的特殊规则"><span class="nav-number">1.3.</span> <span class="nav-text">对于volatile型变量的特殊规则</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#保证此变量对所有线程的可见性"><span class="nav-number">1.3.1.</span> <span class="nav-text">保证此变量对所有线程的可见性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#禁止指令重排序优化"><span class="nav-number">1.3.2.</span> <span class="nav-text">禁止指令重排序优化</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#原子性、可见性和有序性"><span class="nav-number">1.4.</span> <span class="nav-text">原子性、可见性和有序性</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#原子性"><span class="nav-number">1.4.1.</span> <span class="nav-text">原子性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#可见性"><span class="nav-number">1.4.2.</span> <span class="nav-text">可见性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#有序的"><span class="nav-number">1.4.3.</span> <span class="nav-text">有序的</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#先行发生原则-happens-before"><span class="nav-number">1.5.</span> <span class="nav-text">先行发生原则(happens-before)</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Java内存模型中天然存在的先行发生关系"><span class="nav-number">1.5.1.</span> <span class="nav-text">Java内存模型中天然存在的先行发生关系</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Java与线程"><span class="nav-number">2.</span> <span class="nav-text">Java与线程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#线程的实现"><span class="nav-number">2.1.</span> <span class="nav-text">线程的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#使用内核线程实现"><span class="nav-number">2.1.1.</span> <span class="nav-text">使用内核线程实现</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Windows平台"><span class="nav-number">2.1.1.1.</span> <span class="nav-text">Windows平台</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Linux平台"><span class="nav-number">2.1.1.2.</span> <span class="nav-text">Linux平台</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#使用用户线程实现"><span class="nav-number">2.1.2.</span> <span class="nav-text">使用用户线程实现</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#使用用户线程加轻量级进程混合实现"><span class="nav-number">2.1.3.</span> <span class="nav-text">使用用户线程加轻量级进程混合实现</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Solaris平台"><span class="nav-number">2.1.3.1.</span> <span class="nav-text">Solaris平台</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Java线程调度"><span class="nav-number">2.2.</span> <span class="nav-text">Java线程调度</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#协同式线程调度-Cooperative-Threads-Scheduling"><span class="nav-number">2.2.1.</span> <span class="nav-text">协同式线程调度(Cooperative Threads-Scheduling)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#抢占式线程调度-Preemptice-Threads-Scheduling"><span class="nav-number">2.2.2.</span> <span class="nav-text">抢占式线程调度(Preemptice Threads-Scheduling)</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#状态转换"><span class="nav-number">2.3.</span> <span class="nav-text">状态转换</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#新建-New"><span class="nav-number">2.3.1.</span> <span class="nav-text">新建(New)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#运行-Runable"><span class="nav-number">2.3.2.</span> <span class="nav-text">运行(Runable)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#无限期等待-Waiting"><span class="nav-number">2.3.3.</span> <span class="nav-text">无限期等待(Waiting)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#限期等待-Timed-Waiting"><span class="nav-number">2.3.4.</span> <span class="nav-text">限期等待(Timed Waiting)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#阻塞-Blocked"><span class="nav-number">2.3.5.</span> <span class="nav-text">阻塞(Blocked)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#结束-Terminated"><span class="nav-number">2.3.6.</span> <span class="nav-text">结束(Terminated)</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wuxiaoman"
+      src="/images/me.jpeg">
+  <p class="site-author-name" itemprop="name">wuxiaoman</p>
+  <div class="site-description" itemprop="description">任何人该做的，不该是难受和后悔，是总结反思接受</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">7</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wuxiaoman</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.0.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/pisces.js"></script>
+<script src="/js/next-boot.js"></script>
+
+
+
+  
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+</html>
